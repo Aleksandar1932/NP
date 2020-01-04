@@ -66,11 +66,35 @@ public class Anagrams {
         return sb.toString();
     }
 
-    private static int calculateIntegerValueOfString(String string) {
+    private static int calculateIntegerValueOfStringOld(String string) {
         int retValue = 1;
         for (int i = 0; i < string.length(); i++) {
             retValue *= string.charAt(i);
         }
         return retValue;
     }
+
+    public static int calculateIntegerValueOfString(String string){
+        /*
+            Za izbegnuvane kolizii, ne mapirame vo ASCII tuku mapirame vo prvite 26 prosti broevi;
+            90 65 = 78 75
+            Z A = N K => Sto definitivno ne se anagrami a starata funkcija ke gi mapira vo ist Integer, so sto
+            ke se smetaat za anagrami;
+         */
+
+        string = string.toUpperCase();
+        int retValue = 1;
+        int[] integerValuesOfLetters = generateIntegerValuesOfLetters();
+
+        for (int i = 0; i < string.length(); i++) {
+            retValue *= integerValuesOfLetters[string.charAt(i)-65];
+        }
+        return retValue;
+    }
+
+    public static int[] generateIntegerValuesOfLetters(){
+        return new int[]{2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101};
+    }
+
+
 }
