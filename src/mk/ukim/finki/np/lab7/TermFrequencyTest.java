@@ -1,5 +1,4 @@
-//package mk.ukim.finki.np.lab7;
-
+package mk.ukim.finki.np.lab7;
 
 import java.io.*;
 import java.util.*;
@@ -11,92 +10,67 @@ class TermFrequency {
     Integer totalWords;
 
     public TermFrequency(InputStream in, String[] stop) {
-        String rawInput = "";
+        StringBuilder rawInput = new StringBuilder();
         Scanner sc = new Scanner(in);
 
         while (sc.hasNextLine()) {
-            rawInput += sc.nextLine() + " ";
+            rawInput.append(sc.nextLine()).append(" ");
         }
 
         this.totalWords = 0;
-
         wordsToIgnore = new HashSet<>();
         wordsToIgnore.addAll(Arrays.asList(stop));
-
         wordsCountTable = new TreeMap<>();
 
-        processRawInput(rawInput);
+        processRawInput(rawInput.toString());
     }
 
     public void processRawInput(String rawInput) {
         String[] tokenizedRawInput = rawInput.split("\\s+");
-        this.totalWords = tokenizedRawInput.length;
-        //System.out.println(Arrays.toString(tokenizedRawInput));
+
         Arrays.stream(tokenizedRawInput)
-                .filter(word -> !wordsToIgnore.contains(word.toLowerCase()))
-                .filter(this::isWord)
-                .map(this::removeInterpunction)
+                .map(this::removePunctuation)
                 .map(String::toLowerCase)
-//                .map(this::removeInterpunction)
-//                .forEach(word -> {
-//                    wordsCountTable.putIfAbsent(word.toLowerCase(), 1);
-//                    wordsCountTable.computeIfPresent(word, (w, count) -> count++);
-//                });
+                .filter(word -> !wordsToIgnore.contains(word.toLowerCase()))
                 .forEach(word -> {
+                    if (!word.equals("")) {
+                        this.totalWords++;
+                    }
                     wordsCountTable.putIfAbsent(word, 1);
                     wordsCountTable.computeIfPresent(word, (w, count) -> count + 1);
                 });
     }
 
-    public boolean isWord(String optionalWord){
-        return !optionalWord.contains("0")
-                && !optionalWord.contains("1")
-                && !optionalWord.contains("2")
-                && !optionalWord.contains("3")
-                && !optionalWord.contains("4")
-                && !optionalWord.contains("5")
-                && !optionalWord.contains("6")
-                && !optionalWord.contains("7")
-                && !optionalWord.contains("8")
-                && !optionalWord.contains("9")
-                && !optionalWord.contains("-") && !optionalWord.equals(".") && !optionalWord.equals(",") && !optionalWord.equals("//");
-    }
 
-
-    public String removeInterpunction(String word) {
-//        if (word.charAt(word.length() - 1) == '.' || word.charAt(word.length() - 1) == ',') {
-//            return word.substring(0, word.length() - 1);
-//        } else {
-//            return word;
-//        }
-
-       return word.replaceAll("[.,“]*", "");
+    public String removePunctuation(String word) {
+        return word.replaceAll("[.,“]*", "");
     }
 
     public int countTotal() {
-       // System.out.println(wordsCountTable);
-       //return wordsCountTable.values().stream().mapToInt(i -> i).sum();
-        return wordsCountTable.size();
+        return this.totalWords;
     }
 
     public int countDistinct() {
-        return 0;
+        return wordsCountTable.size();
     }
 
     public List<String> mostOften(int k) {
-        return null;
+        return wordsCountTable.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+                .map(Map.Entry::getKey)
+                .limit(k)
+                .collect(Collectors.toList());
     }
 }
 
 public class TermFrequencyTest {
-    public static void main(String[] args) throws FileNotFoundException {
+    public static void main(String[] args) {
         String[] stop = new String[]{"во", "и", "се", "за", "ќе", "да", "од",
                 "ги", "е", "со", "не", "тоа", "кои", "до", "го", "или", "дека",
                 "што", "на", "а", "но", "кој", "ја"};
         TermFrequency tf = new TermFrequency(System.in, stop);
-        System.out.println("Total map size:\n" + tf.countTotal());
+        System.out.println(tf.countTotal());
         System.out.println(tf.countDistinct());
         System.out.println(tf.mostOften(10));
     }
 }
-// vasiot kod ovde
