@@ -1,7 +1,9 @@
 package mk.ukim.finki.np.vezbanjekol2;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
 
 class InvalidPositionException extends Exception {
     Integer position;
@@ -12,7 +14,7 @@ class InvalidPositionException extends Exception {
 
     @Override
     public String getMessage() {
-        return String.format("Invalid position [%d], alredy taken!", position);
+        return String.format("Invalid position %d, alredy taken!", position);
     }
 }
 
@@ -21,24 +23,18 @@ class Component {
     Integer weight;
     Set<Component> innerComponents;
 
-    public Component(String color, int weight) {
+    public Component(String color, Integer weight) {
         this.color = color;
         this.weight = weight;
-        innerComponents = new TreeSet<>(
-                Comparator.comparing(Component::getWeight).thenComparing(Component::getColor)
-        );
+        innerComponents = new TreeSet<>(Comparator.comparing(Component::getWeight).thenComparing(Component::getColor));
     }
 
-    public void addComponent(Component componentToAdd) {
-        innerComponents.add(componentToAdd);
+    public void addComponent(Component component) {
+        innerComponents.add(component);
     }
 
     public String getColor() {
         return color;
-    }
-
-    public Set<Component> getInnerComponents() {
-        return innerComponents;
     }
 
     public Integer getWeight() {
@@ -49,69 +45,80 @@ class Component {
         this.color = color;
     }
 
-    @Override
-    public String toString() {
-        String retString = String.format("%d:%s", this.weight, this.color);
-        return retString + innerComponents.stream()
-                .map(component -> component.toString())
-                .collect(Collectors.joining("\n"));
+    public Set<Component> getInnerComponents() {
+        return innerComponents;
+    }
+
+    public String toString(int indentation) {
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < indentation; i++)
+            sb.append("-");
+
+        sb.append(String.format("%d:%s\n", this.weight, this.color));
+        for (Component c : innerComponents) {
+            sb.append(c.toString(indentation + 3));
+        }
+
+        return sb.toString();
+    }
+
+    public Set<Component> flatMapAllInnerComponents() {
+        Set<Component> returnSet = new TreeSet<>(Comparator.comparing(Component::getWeight).thenComparing(Component::getColor));
+        returnSet.add(this);
+        returnSet.addAll(this.getInnerComponents());
+
+        for (Component c : innerComponents) {
+            returnSet.addAll(c.getInnerComponents());
+        }
+
+        return returnSet;
     }
 }
 
 class Window {
-    String windowName;
-    List<Component> components;
+    String name;
+    Map<Integer, Component> components;
 
-    public Window(String windowName) {
-        this.windowName = windowName;
-        components = new ArrayList<>(1000);
+    public Window(String name) {
+        this.name = name;
+        components = new TreeMap<>();
     }
 
-    public void addComponent(int position, Component componentToAdd) throws InvalidPositionException {
-        if (components.get(position) != null) {
-            //Position is not empty,then throw an exception;
+    public void addComponent(int position, Component component) throws InvalidPositionException {
+        if (components.containsKey(position)) {
             throw new InvalidPositionException(position);
         } else {
-            //Position is empty, so add the component;
-            components.add(position, componentToAdd);
+            components.put(position, component);
         }
     }
 
     public void changeColor(int weight, String color) {
-        /*
-            Logika: Gi strimam site komponenti gi filtriram spored tezina, potoa,
-            za sekoj komponent mu ja menam bojata ako go pominal filterot, i mu ja zemam
-            listata so vnatresni komponenti, i ja strimam i taa lista so istata logika,
-            filtriram elementi so pomala tezina od dadenata i za sekoj od tie elementi
-            mu ja menam bojata vo soodvetnata boja prosledena kako argument;
-         */
-        components.stream()
+        components.values().stream().flatMap(component -> component.flatMapAllInnerComponents().stream())
                 .filter(component -> component.getWeight() < weight)
-                .forEach(component -> {
-                    component.setColor(color);
-                    component.getInnerComponents().stream()
-                            .filter(innerComponent -> innerComponent.getWeight() < weight)
-                            .forEach(innerComponent -> {
-                                innerComponent.setColor(color);
-                            });
-                });
+                .forEach(component -> component.setColor(color));
     }
 
-    public void swichComponents(int pos1, int pos2) {
-        if (components.get(pos1) != null && components.get(pos2) != null) {
-            //OK e postojat komponentite da ne menuvam null-ovi
+    public void switchComponents(int pos1, int pos2) {
+        Component component1 = components.get(pos1);
+        Component component2 = components.get(pos2);
 
-            Collections.swap(components, pos1, pos2);
-        }
+        components.put(pos1, component2);
+        components.put(pos2, component1);
     }
+
 
     @Override
     public String toString() {
-        String retString = String.format("%s", this.windowName);
-        return retString + components.stream().map(component -> component.toString()).collect(Collectors.joining("\n"));
+        AtomicInteger counter = new AtomicInteger();
+        counter.set(0);
+        return "WINDOW " + this.name + "\n" +
+                components.values()
+                        .stream()
+                        .map(component -> counter.incrementAndGet() + ":" + component.toString(0))
+                        .collect(Collectors.joining(""));
     }
 }
-
 
 public class ComponentTest {
     public static void main(String[] args) {
@@ -129,19 +136,22 @@ public class ComponentTest {
                 } else if (what == 1) {
                     String color = scanner.nextLine();
                     int weight = scanner.nextInt();
-                    Component component = new Component(color, weight);
-                    prev = component;
+                    prev = new Component(color, weight);
                 } else if (what == 2) {
                     String color = scanner.nextLine();
                     int weight = scanner.nextInt();
                     Component component = new Component(color, weight);
+                    assert prev != null;
                     prev.addComponent(component);
                     prev = component;
                 } else if (what == 3) {
                     String color = scanner.nextLine();
                     int weight = scanner.nextInt();
                     Component component = new Component(color, weight);
+                    assert prev != null;
                     prev.addComponent(component);
+
+
                 } else if (what == 4) {
                     break;
                 }
@@ -158,12 +168,14 @@ public class ComponentTest {
         scanner.nextLine();
         String color = scanner.nextLine();
         window.changeColor(weight, color);
+
+
         System.out.println(String.format("=== CHANGED COLOR (%d, %s) ===", weight, color));
         System.out.println(window);
         int pos1 = scanner.nextInt();
         int pos2 = scanner.nextInt();
         System.out.println(String.format("=== SWITCHED COMPONENTS %d <-> %d ===", pos1, pos2));
-        window.swichComponents(pos1, pos2);
+        window.switchComponents(pos1, pos2);
         System.out.println(window);
     }
 }
